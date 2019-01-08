@@ -16,7 +16,8 @@ import {
   ViewContainerRef,
   ComponentFactoryResolver,
   NgZone,
-  ViewEncapsulation
+  ViewEncapsulation,
+  HostListener
 } from '@angular/core';
 import {DOCUMENT} from '@angular/common';
 
@@ -50,7 +51,7 @@ export class NgbTooltipWindow {
   @Input() id: string;
   @Input() tooltipClass: string;
 
-  constructor(private _element: ElementRef<HTMLElement>, private _renderer: Renderer2) {}
+  constructor(private _element: ElementRef<HTMLElement>, private _renderer: Renderer2) { }
 
   applyPlacement(_placement: Placement) {
     // remove the current placement classes
@@ -199,29 +200,29 @@ export class NgbTooltip implements OnInit, OnDestroy {
               this._elementRef.nativeElement, this._windowRef.location.nativeElement, this.placement,
               this.container === 'body'));
 
-      if (this.autoClose) {
-        this._ngZone.runOutsideAngular(() => {
-          // prevents automatic closing right after an opening by putting a guard for the time of one event handling
-          // pass
-          // use case: click event would reach an element opening the tooltip first, then reach the autoClose handler
-          // which would close it
-          let justOpened = true;
-          requestAnimationFrame(() => justOpened = false);
+        if (this.autoClose) {
+          this._ngZone.runOutsideAngular(() => {
+            // prevents automatic closing right after an opening by putting a guard for the time of one event handling
+            // pass
+            // use case: click event would reach an element opening the tooltip first, then reach the autoClose handler
+            // which would close it
+            let justOpened = true;
+            requestAnimationFrame(() => justOpened = false);
 
-          const escapes$ = fromEvent<KeyboardEvent>(this._document, 'keyup')
-                               .pipe(
-                                   takeUntil(this.hidden),
-                                   // tslint:disable-next-line:deprecation
-                                   filter(event => event.which === Key.Escape));
+            const escapes$ = fromEvent<KeyboardEvent>(this._document, 'keyup')
+                                .pipe(
+                                    takeUntil(this.hidden),
+                                    // tslint:disable-next-line:deprecation
+                                    filter(event => event.which === Key.Escape));
 
-          const clicks$ = fromEvent<MouseEvent>(this._document, 'click')
-                              .pipe(
-                                  takeUntil(this.hidden), filter(() => !justOpened),
-                                  filter(event => this._shouldCloseFromClick(event)));
+            const clicks$ = fromEvent<MouseEvent>(this._document, 'click')
+                                .pipe(
+                                    takeUntil(this.hidden), filter(() => !justOpened),
+                                    filter(event => this._shouldCloseFromClick(event)));
 
-          race<Event>([escapes$, clicks$]).subscribe(() => this._ngZone.run(() => this.close()));
-        });
-      }
+            race<Event>([escapes$, clicks$]).subscribe(() => this._ngZone.run(() => this.close()));
+          });
+        }
 
       this.shown.emit();
     }
@@ -236,6 +237,36 @@ export class NgbTooltip implements OnInit, OnDestroy {
       this._popupService.close();
       this._windowRef = null;
       this.hidden.emit();
+    }
+  }
+
+  /**
+   * Open the tooltip content when focusing on the tooltip button
+   * the trigger must be defined as hover
+   */
+  @HostListener('focus') onFocus() {
+    if (this.triggers  === 'hover') {
+      this.open();
+    }
+  }
+
+  /**
+   * Close the tooltip content when focusing out the tooltip button
+   * the trigger must be defined as hover
+   */
+  @HostListener('focusout') onFocusOut() {
+    if (this.triggers === 'hover') {
+      this.close();
+    }
+  }
+
+  /**
+   * Close the tooltip content when focusing on the button and escape to close
+   * the trigger must be defined as hover
+   */
+  @HostListener('document:keydown.escape', ['$event']) onKeydownHandler(event: KeyboardEvent) {
+    if (this.triggers === 'hover') {
+      this.close();
     }
   }
 
