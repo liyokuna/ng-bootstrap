@@ -154,6 +154,30 @@ describe('ngb-tooltip', () => {
       expect(directive.nativeElement.getAttribute('aria-describedby')).toBeNull();
     });
 
+    it('should open when focus in and close a tooltip after loosing the focus- default settings and content as string',
+       () => {
+         const fixture = createTestComponent(`<div ngbTooltip="Great tip!"></div>`);
+         const directive = fixture.debugElement.query(By.directive(NgbTooltip));
+         const defaultConfig = new NgbTooltipConfig();
+
+         directive.triggerEventHandler('focus', {});
+         fixture.detectChanges();
+         const windowEl = getWindow(fixture.nativeElement);
+
+         expect(windowEl).toHaveCssClass('tooltip');
+         expect(windowEl).toHaveCssClass(`bs-tooltip-${defaultConfig.placement}`);
+         expect(windowEl.textContent.trim()).toBe('Great tip!');
+         expect(windowEl.getAttribute('role')).toBe('tooltip');
+         expect(windowEl.getAttribute('id')).toBe('ngb-tooltip-4');
+         expect(windowEl.parentNode).toBe(fixture.nativeElement);
+         expect(directive.nativeElement.getAttribute('aria-describedby')).toBe('ngb-tooltip-4');
+
+         directive.triggerEventHandler('focusout', {});
+         fixture.detectChanges();
+         expect(getWindow(fixture.nativeElement)).toBeNull();
+         expect(directive.nativeElement.getAttribute('aria-describedby')).toBeNull();
+       });
+
     it('should not open a tooltip if content is falsy', () => {
       const fixture = createTestComponent(`<div [ngbTooltip]="notExisting"></div>`);
       const directive = fixture.debugElement.query(By.directive(NgbTooltip));
